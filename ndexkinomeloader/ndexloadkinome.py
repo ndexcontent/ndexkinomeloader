@@ -250,14 +250,27 @@ class NDExNdexkinomeloaderLoader(object):
         return self._get_kinome_prefix() + self._biogrid_version + '.zip'
 
     def _get_interactions_file_name(self):
+        """
+        Gets PPI interactions file name
+        :return:
+        """
         return os.path.join(self._datadir, \
                             self._get_kinome_prefix() + 'INTERACTIONS-' + self._biogrid_version + '.tab2.txt')
 
     def _get_ptm_file_name(self):
+        """
+        Gets the post translational modification file
+
+        :return:
+        """
         return os.path.join(self._datadir,\
                             self._get_kinome_prefix() + 'PTM-' + self._biogrid_version + '.ptmtab.txt')
 
     def _get_genes_file_name(self):
+        """
+        Gets genes file
+        :return:
+        """
         return os.path.join(self._datadir, \
                             self._get_kinome_prefix() + 'GENES-' + self._biogrid_version + '.projectindex.txt')
 
@@ -312,6 +325,24 @@ class NDExNdexkinomeloaderLoader(object):
         return SUCCESS
 
     def _build_gene_lookup(self):
+        """
+        Sets `self._gene_lookup` to a :py:func:`dict` with
+        key set to gene ids and value set to a dict of following
+        format:
+
+        .. code-block::
+
+            {
+                    'INTERACTION COUNT': row['INTERACTION COUNT'],
+                    'PTM COUNT': row['PTM COUNT'],
+                    'CHEMICAL INTERACTION COUNT': row['CHEMICAL INTERACTION COUNT'],
+                    'SOURCE': row['SOURCE'],
+                    'CATEGORY VALUES': row['CATEGORY VALUES'],
+                    'SUBCATEGORY VALUES': row['SUBCATEGORY VALUES']
+            }
+
+        :return:
+        """
 
         try:
             _gene_lookup = pd.read_csv(self._genes, sep='\t')
@@ -743,64 +774,67 @@ class NDExNdexkinomeloaderLoader(object):
                 target_node_attributes = ptm_network_in_cx.nodeAttributes[edge['t']]
                 self._add_ptm_ids_to_target_node(biogrid_ptm_ids, target_node_attributes)
 
-
-
-    def _build_pti_node_name_to_node_id_dictionary(self, pti_CX_network):
+    def _build_pti_node_name_to_node_id_dictionary(self, pti_cx_network):
         """
+        Iterates through all nodes of network in `pti_cx_network`
+        to build a :py:func:`dict`
 
-        :param pti_CX_network:
-        :return:
+        :param pti_cx_network: network to use
+        :return: dictionary with key set to node name and value set to node id
+        :rtype: dict
         """
         pti_nodes = {}
-        for node in pti_CX_network.get_nodes():
-            node_obj = node[1]
-            node_id = node_obj['@id']
+        for node_id, node_obj in pti_cx_network.get_nodes():
             node_name = node_obj['n']
-            if node_name not in pti_nodes:
-                pti_nodes[node_name] = node_id
-            else:
-                raise Exception('Found duplicate node name in PTI network: ' + node_name + ' ids: ' +
-                                pti_nodes[node_name] + ', ' + node_id)
+            if node_name in pti_nodes:
+                raise Exception('Found duplicate node '
+                                'name in PTI network: ' +
+                                node_name + ' ids: ' +
+                                pti_nodes[node_name] +
+                                ', ' + node_id)
+            pti_nodes[node_name] = node_id
 
         return pti_nodes
 
-    def _build_ptm_node_name_to_node_id_dictionary(self, ptm_CX_network):
+    def _build_ptm_node_name_to_node_id_dictionary(self, ptm_cx_network):
         """
+         Iterates through all nodes of network in `ptm_cx_network`
+        to build a :py:func:`dict` of only nodes with type `protein`
 
-        :param ptm_CX_network:
-        :return:
+        :param ptm_cx_network:
+        :return: dictionary with key set to node name and value set to node id
+        :rtype: dict
         """
         ptm_nodes = {}
-        for node in ptm_CX_network.get_nodes():
-            node_obj = node[1]
-            node_id = node_obj['@id']
+        for node_id, node_obj in ptm_cx_network.get_nodes():
             node_name = node_obj['n']
-
-            node_type = ptm_CX_network.get_node_attribute(node_obj, 'type')
+            node_type = ptm_cx_network.get_node_attribute(node_obj, 'type')
 
             if node_type and node_type['v'].strip().lower() == 'protein':
-
                 # for ptm network we only want names of protein/gene nodes
-                if node_name not in ptm_nodes:
-                    ptm_nodes[node_name] = node_id
-                else:
-                    raise Exception('Found duplicate node name in PTM network: ' + node_name + ' ids: ' +
+                if node_name in ptm_nodes:
+                    raise Exception('Found duplicate node name in PTM '
+                                    'network: ' + node_name + ' ids: ' +
                                     ptm_nodes[node_name] + ', ' + node_id)
-        return ptm_nodes
+                ptm_nodes[node_name] = node_id
 
+        return ptm_nodes
 
     def _get_all_edges_for_node(self, node_id, cx_network):
         """
-
-        :param node_id:
+        Gets a list of all edges that have `node_id` as `source` or
+        `target`
+        :param node_id: id of node
+        :type node_id: int
         :param cx_network:
-        :return:
+        :return: list of :py:func:`dict` representing edges
+        :rtype: list
         """
         edges = []
 
-        for edge in cx_network.get_edges():
-            if node_id == edge[1]['s'] or node_id == edge[1]['t']:
-                edges.append(edge[1])
+        for edge_id, edge_obj in cx_network.get_edges():
+            if node_id == edge_obj['s'] or node_id == edge_obj['t']:
+                edges.append(edge_obj)
 
         return edges
 
@@ -842,7 +876,6 @@ class NDExNdexkinomeloaderLoader(object):
 
                 # set the node attributes to the node in pti network
                 pti_CX_network.nodeAttributes[new_node_id] = copy.deepcopy(ptm_node_props)
-
 
                 ptm_edge_id = src_target_edge_ptm_ids_dict.get((protein_id, ptm_id), None)
                 if ptm_edge_id is None:
@@ -980,8 +1013,6 @@ class NDExNdexkinomeloaderLoader(object):
         # in this dictionary for ptm network, key is protein node name, value is to node id:
         #   pti_node_name_dict: { 'ADK1': 0, 'ADR1': 2, 'AKL1': 40, ...}
         ptm_node_name_dict = self._build_ptm_node_name_to_node_id_dictionary(ptm_CX_network)
-
-        #print(f'protein nodes in pti={len(pti_node_name_dict)}   protein nodes in ptm={len(ptm_node_name_dict)}')
 
         # in this dictionary for ptm network, key is protein node id, value is list of ptm ids:
         #   pti_node_name_dict: {0: [1, 3108, 3521, 3522, 3523], 2: [3, 4, 5, 6, 7, 8, 9], 40: [41, 42, 43, 44, 45], ...}
