@@ -23,22 +23,23 @@ class TestNdexkinomeloader(unittest.TestCase):
 
     def test_parse_arguments(self):
         """Tests parse arguments"""
-        res = ndexloadkinome._parse_arguments('hi', [])
+        res = ndexloadkinome._parse_arguments('hi', ['datadir'])
 
         self.assertEqual(res.profile, 'ndexkinomeloader')
         self.assertEqual(res.verbose, 0)
         self.assertEqual(res.logconf, None)
         self.assertEqual(res.conf, None)
+        self.assertEqual(res.datadir, 'datadir')
 
         someargs = ['-vv','--conf', 'foo', '--logconf', 'hi',
-                    '--profile', 'myprofy']
+                    '--profile', 'myprofy', 'datadir']
         res = ndexloadkinome._parse_arguments('hi', someargs)
 
         self.assertEqual(res.profile, 'myprofy')
         self.assertEqual(res.verbose, 2)
         self.assertEqual(res.logconf, 'hi')
         self.assertEqual(res.conf, 'foo')
-
+        self.assertEqual(res.datadir, 'datadir')
 
     def test_setup_logging(self):
         """ Tests logging setup"""
@@ -49,7 +50,7 @@ class TestNdexkinomeloader(unittest.TestCase):
             pass
 
         # args.logconf is None
-        res = ndexloadkinome._parse_arguments('hi', [])
+        res = ndexloadkinome._parse_arguments('hi', ['datadir'])
         ndexloadkinome._setup_logging(res)
 
         # args.logconf set to a file
@@ -81,7 +82,8 @@ args=(sys.stderr,)
 format=%(asctime)s %(name)-12s %(levelname)-8s %(message)s""")
 
             res = ndexloadkinome._parse_arguments('hi', ['--logconf',
-                                                                       logfile])
+                                                         logfile,
+                                                         'datadir'])
             ndexloadkinome._setup_logging(res)
 
         finally:
@@ -90,9 +92,9 @@ format=%(asctime)s %(name)-12s %(levelname)-8s %(message)s""")
     def test_main(self):
         """Tests main function"""
 
+        temp_dir = tempfile.mkdtemp()
         # try where loading config is successful
         try:
-            temp_dir = tempfile.mkdtemp()
             confile = os.path.join(temp_dir, 'some.conf')
             with open(confile, 'w') as f:
                 f.write("""[hi]
@@ -102,8 +104,9 @@ format=%(asctime)s %(name)-12s %(levelname)-8s %(message)s""")
                                                      pw=NDExUtilConfig.PASSWORD,
                                                      server=NDExUtilConfig.SERVER))
             res = ndexloadkinome.main(['myprog.py', '--conf',
-                                                     confile, '--profile',
-                                                     'hi'])
-            self.assertEqual(res, 0)
+                                       confile, '--profile',
+                                       'hi', '--skipdownload',
+                                       temp_dir])
+            self.assertEqual(res, 2)
         finally:
             shutil.rmtree(temp_dir)
