@@ -1095,7 +1095,7 @@ class NDExNdexkinomeloaderLoader(object):
         merged_net = ndex2.create_nice_cx_from_file(self._cx_merged)
 
         # THIS IS A HACK FIX CAUSE THE IMPORT ABOVE DOESNT DO THE RIGHT THING
-        # 
+        #
         merged_net.node_int_id_generator = max(merged_net.nodes.keys()) + 1
         merged_net.edge_int_id_generator = max(merged_net.edges.keys()) + 1
 
