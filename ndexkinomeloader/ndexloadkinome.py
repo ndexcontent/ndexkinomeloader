@@ -120,7 +120,8 @@ def _parse_arguments(desc, args):
     parser.add_argument('--skipdownload', action='store_true',
                         help='If set, skips download of  BioGRID Kinome and assumes data already reside in <datadir>'
                              'directory')
-
+    parser.add_argument('--skipstep3', action='store_true',
+                        help='If set, skips steps 1, 2, 3 and assumes files are in datadir')
     styling_group.add_argument('--template',
            help='UUID of network to use for styling networks (the same account where networks are located)')
 
@@ -203,6 +204,7 @@ class NDExNdexkinomeloaderLoader(object):
         self._cx_pti = os.path.join(self._datadir, 'pti_1.cx')
         self._cx_ptm = os.path.join(self._datadir, 'ptm_2.cx')
         self._cx_merged = os.path.join(self._datadir, 'merged_3.cx')
+        self._cx_final = os.path.join(self._datadir, 'final_4.cx')
 
     def _get_user_agent(self):
         """
@@ -492,6 +494,8 @@ class NDExNdexkinomeloaderLoader(object):
             network.set_name('PTM - Step 2')
         elif type == 'merged':
             network.set_name('FULLY MERGED - Step 3')
+        elif type == 'final':
+            network.set_name('BioGRID Kinome Final')
 
         network.set_network_attribute('prov:wasDerivedFrom', self._get_kinome_download_url())
         network.set_network_attribute('prov:wasGeneratedBy',
@@ -973,7 +977,28 @@ class NDExNdexkinomeloaderLoader(object):
         if ret_value != SUCCESS:
             return ret_value
 
-        # Step 1 - create PPI file from GENES and INTERACTIONS files
+        if self._args.skipstep3 is False:
+            # Step 1 - create PPI file from GENES and INTERACTIONS files
+            self._run_step_one(summaries)
+
+            # Step 2 - create PTM network file
+            self._run_step_two(summaries)
+
+            # Step 3
+            self._run_step_three(summaries)
+        else:
+            logger.info('Skipping steps 1 - 3')
+        # Step 4
+        self._run_step_four(summaries)
+
+        return SUCCESS
+
+    def _run_step_one(self, network_summaries):
+        """
+
+        :param network_summaries:
+        :return:
+        """
         self._create_ppi_file()
 
         pti_CX_network, ret_value = self._generate_CX_file(self._pti_load_plan, self._ppi_network_1)
@@ -983,10 +1008,15 @@ class NDExNdexkinomeloaderLoader(object):
         self._collapse_edges(pti_CX_network)
         self._init_network_attributes(pti_CX_network, 'pti')
         self._write_nice_cx_to_file(pti_CX_network, self._cx_pti)
-        network_UUID = self._network_exists_on_server(pti_CX_network, summaries)
+        network_UUID = self._network_exists_on_server(pti_CX_network, network_summaries)
         self._upload_CX(self._cx_pti, network_UUID)
 
-        # Step 2 - create PTM network file
+    def _run_step_two(self, network_summaries):
+        """
+
+        :param network_summaries:
+        :return:
+        """
         self._create_ptm_file()
 
         ptm_CX_network, ret_value = self._generate_CX_file(self._ptm_load_plan, self._ptm_network_2)
@@ -998,39 +1028,162 @@ class NDExNdexkinomeloaderLoader(object):
         self._add_BioGRID_PTM_IDs_to_ptm_nodes(ptm_CX_network)
         self._init_network_attributes(ptm_CX_network, 'ptm')
         self._write_nice_cx_to_file(ptm_CX_network, self._cx_ptm)
-        network_UUID = self._network_exists_on_server(ptm_CX_network, summaries)
+        network_UUID = self._network_exists_on_server(ptm_CX_network, network_summaries)
         self._upload_CX(self._cx_ptm, network_UUID)
 
+    def _run_step_three(self, network_summaries):
+        """
+
+        :return:
+        """
         # Step 3 - merge PTM network with PTI network on protein/genes:
         # in essence, we add edges from PTM network to PTI based on node names
-        pti_CX_network = ndex2.create_nice_cx_from_file(self._cx_pti)
-        ptm_CX_network = ndex2.create_nice_cx_from_file(self._cx_ptm)
+        pti_cx_network = ndex2.create_nice_cx_from_file(self._cx_pti)
+        ptm_cx_network = ndex2.create_nice_cx_from_file(self._cx_ptm)
 
         # in this dictionary for pti network, key is protein node name, value is to node id:
         #   pti_node_name_dict: { 'CHD1': 0, 'CKA1': 1, 'CKA2': 2, ...}
-        pti_node_name_dict = self._build_pti_node_name_to_node_id_dictionary(pti_CX_network)
+        pti_node_name_dict = self._build_pti_node_name_to_node_id_dictionary(pti_cx_network)
 
         # in this dictionary for ptm network, key is protein node name, value is to node id:
         #   pti_node_name_dict: { 'ADK1': 0, 'ADR1': 2, 'AKL1': 40, ...}
-        ptm_node_name_dict = self._build_ptm_node_name_to_node_id_dictionary(ptm_CX_network)
+        ptm_node_name_dict = self._build_ptm_node_name_to_node_id_dictionary(ptm_cx_network)
 
         # in this dictionary for ptm network, key is protein node id, value is list of ptm ids:
         #   pti_node_name_dict: {0: [1, 3108, 3521, 3522, 3523], 2: [3, 4, 5, 6, 7, 8, 9], 40: [41, 42, 43, 44, 45], ...}
-        protein_id_to_ptm_ids_dict = self._build_protein_id_to_ptm_ids_dict(ptm_node_name_dict, ptm_CX_network)
+        protein_id_to_ptm_ids_dict = self._build_protein_id_to_ptm_ids_dict(ptm_node_name_dict, ptm_cx_network)
 
         # in this dictionary for ptm network, key is a tuple (source Id, target Id), and
         # value is edge id
-        src_target_edge_ptm_ids_dict = self._build_src_target_edge_ptm_ids_dict(ptm_CX_network)
+        src_target_edge_ptm_ids_dict = self._build_src_target_edge_ptm_ids_dict(ptm_cx_network)
 
         merged_ptm_pti_network = self._merge_ptm_onto_pti(pti_node_name_dict, ptm_node_name_dict,
-                  pti_CX_network, ptm_CX_network, protein_id_to_ptm_ids_dict, src_target_edge_ptm_ids_dict)
+                                                          pti_cx_network, ptm_cx_network, protein_id_to_ptm_ids_dict,
+                                                          src_target_edge_ptm_ids_dict)
 
         self._init_network_attributes(merged_ptm_pti_network, 'merged')
         self._write_nice_cx_to_file(merged_ptm_pti_network, self._cx_merged)
-        network_UUID = self._network_exists_on_server(merged_ptm_pti_network, summaries)
+        network_UUID = self._network_exists_on_server(merged_ptm_pti_network, network_summaries)
         self._upload_CX(self._cx_merged, network_UUID)
 
-        return SUCCESS
+    def _run_step_four(self, network_summaries):
+        """
+        Okay this method should do this (pulled from ticket):
+
+        .. code-block::
+            Add relationships between PTMs based on RELATIONSHIPS file
+
+            Using the combined network from STEP 3 as substrate, add new edges that connect PTMs (PTM ID) and target proteins (genes).
+
+            STEP 4 network should not contain any new nodes compared to STEP 3 network, only new edges (at least, this is what I would expect if I understood the data).
+
+            Keys are the PTM IDs in Relationships file (first column).
+
+            For example, the first 2 lines involve relationships between the PTM ID #6 and the MEC1 and TEL1 genes.
+
+            The new edges should have a new property called "is relationship" and its value set to TRUE.
+
+            Other properties on the edges should include the following columns: Relationship, Identity, Author, Pubmed ID (citation).
+
+            No need to touch anything in the nodes, either source (PTMs) or target (genes).
+
+            Please try to keep the order of the properties on new edges as similar as that on other edges.
+
+        :return:
+        """
+        logger.info('Running step 4')
+        merged_net = ndex2.create_nice_cx_from_file(self._cx_merged)
+
+        # THIS IS A HACK FIX CAUSE THE IMPORT ABOVE DOESNT DO THE RIGHT THING
+        # 
+        merged_net.node_int_id_generator = max(merged_net.nodes.keys()) + 1
+        merged_net.edge_int_id_generator = max(merged_net.edges.keys()) + 1
+
+        self._init_network_attributes(merged_net, 'final')
+
+        relations_df = pd.read_csv(self._relations, sep='\t')
+        logger.debug('First few lines of relations' +
+                     str(relations_df.head()))
+        counter = 0
+        gene_node_dict = self.get_target_gene_node_dict(merged_net)
+
+        for node_id, node_obj in merged_net.get_nodes():
+            ptm_id_node_attr = merged_net.get_node_attribute(node_id,
+                                                             'BioGRID PTM ID')
+            if ptm_id_node_attr is None:
+                continue
+            counter += 1
+            for ptm_id in ptm_id_node_attr['v']:
+                match_rows = relations_df.loc[relations_df['#PTM ID'] == int(ptm_id)]
+                if match_rows.empty is True:
+                    continue
+                logger.debug('Found a node: ' + str(node_obj) +
+                             ' and ' + str(ptm_id_node_attr) +
+                             ' ' + str(match_rows))
+                for row_id, row in match_rows.iterrows():
+                    eid = self.add_relationship_edge(merged_net,
+                                                     gene_node_dict,
+                                                     row, node_id)
+                    if eid is None:
+                        continue
+                    self.add_relationship_attributes(merged_net, row, eid)
+
+        logger.info('Found ' + str(counter) + ' nodes with BioGRID PTM ID attribute')
+        logger.info('Writing network to filesystem')
+        self._write_nice_cx_to_file(merged_net, self._cx_final)
+        network_uuid = self._network_exists_on_server(merged_net, network_summaries)
+        logger.info('Saving network to NDEx')
+        self._upload_CX(self._cx_final, network_uuid)
+
+    def add_relationship_attributes(self, merged_net, pandas_row, edge_id):
+        """
+        Right now
+        this only adds 'is relationship' and sets it to 'true'
+
+        :param merged_net:
+        :param pandas_row:
+        :param edge_id:
+        :return:
+        """
+        merged_net.add_edge_attribute(edge_id, 'is relationship', 'true',
+                                      type='boolean')
+
+    def add_relationship_edge(self, merged_net, gene_node_dict, pandas_row, node_id):
+        """
+        Adds an edge between id of node `node_id` passed in and gene node
+        whose symbol matches that found in 'Official Symbol'
+        The interaction is set to 'relates' since it wasnt defined in the spec
+
+        :param merged_net:
+        :param gene_node_dict:
+        :param pandas_row:
+        :param node_id:
+        :return:
+        """
+        gene_sym = pandas_row['Official Symbol']
+        if gene_sym not in gene_node_dict:
+            return None
+        gene_node_id = gene_node_dict[gene_sym]
+        eid = merged_net.create_edge(edge_source=node_id,
+                                     edge_target=gene_node_id,
+                                     edge_interaction='relates')
+        return eid
+
+    def get_target_gene_node_dict(self, merged_net):
+        """
+        Gets a dict of GENE name to node ids
+        :param self:
+        :param merged_net:
+        :return:
+        """
+        lookup_dict = {}
+        for node_id, node_obj in merged_net.get_nodes():
+            type_attr = merged_net.get_node_attribute(node_id, 'type')
+            if type_attr is None:
+                continue
+            if type_attr['v'] == 'protein':
+                lookup_dict[node_obj['n']] = node_id
+        return lookup_dict
 
 
 def main(args):
