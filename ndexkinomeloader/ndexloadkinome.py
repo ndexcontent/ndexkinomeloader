@@ -38,6 +38,7 @@ TSV2NICECXMODULE = 'ndexutil.tsv.tsv2nicecx2'
 LOG_FORMAT = "%(asctime)-15s %(levelname)s %(relativeCreated)dms " \
              "%(filename)s::%(funcName)s():%(lineno)d %(message)s"
 
+
 def get_package_dir():
     """
     Gets directory where package is installed
@@ -102,7 +103,6 @@ def _parse_arguments(desc, args):
     parser.add_argument('--loadptm', help='Path to PTM load plan file in json format', default=get_load_plan(PTM_LOAD_PLAN))
 
     styling_group.add_argument('--style', help='Path to NDEx CX file to use for styling networks', default=get_style())
-
 
     parser.add_argument('--verbose', '-v', action='count', default=0,
                         help='Increases verbosity of logger to standard '
@@ -175,7 +175,8 @@ class NDExNdexkinomeloaderLoader(object):
         self._datadir = os.path.abspath(args.datadir)
         self._skipdownload = args.skipdownload
 
-        self._kinome_zip = os.path.join(self._datadir, self._get_kinome_zip_file_name())
+        self._kinome_zip = os.path.join(self._datadir,
+                                        self._get_kinome_zip_file_name())
         self._interactions = self._get_interactions_file_name()
         self._ptm = self._get_ptm_file_name()
         self._genes = self._get_genes_file_name()
@@ -184,9 +185,13 @@ class NDExNdexkinomeloaderLoader(object):
         self._ppi_network_1 = os.path.join(self._datadir, 'ppi_network_1.txt')
         self._ptm_network_2 = os.path.join(self._datadir, 'ptm_network_2.txt')
 
-
-        self._interaction_headers = ["#BIOGRID ID", "ENTREZ GENE ID", "INTERACTION COUNT", "PTM COUNT",
-                   "CHEMICAL INTERACTION COUNT", "SOURCE", "CATEGORY VALUES", "SUBCATEGORY VALUES"]
+        self._interaction_headers = ["#BIOGRID ID",
+                                     "ENTREZ GENE ID",
+                                     "INTERACTION COUNT",
+                                     "PTM COUNT",
+                                     "CHEMICAL INTERACTION COUNT",
+                                     "SOURCE", "CATEGORY VALUES",
+                                     "SUBCATEGORY VALUES"]
         self._gene_lookup = {}
 
         self._pti_load_plan = args.loadpti
@@ -199,13 +204,11 @@ class NDExNdexkinomeloaderLoader(object):
         self._cx_ptm = os.path.join(self._datadir, 'ptm_2.cx')
         self._cx_merged = os.path.join(self._datadir, 'merged_3.cx')
 
-
     def _get_user_agent(self):
         """
         :return:
         """
         return 'kinome/' + self._biogrid_version
-
 
     def _create_ndex_connection(self):
         """
@@ -229,7 +232,6 @@ class NDExNdexkinomeloaderLoader(object):
         """
         self._template = ndex2.create_nice_cx_from_file(os.path.abspath(self._args.style))
 
-
     def _parse_config(self):
         """
         Parses config
@@ -241,12 +243,11 @@ class NDExNdexkinomeloaderLoader(object):
         self._pass = con.get(self._profile, NDExUtilConfig.PASSWORD)
         self._server = con.get(self._profile, NDExUtilConfig.SERVER)
 
-
     def _get_kinome_prefix(self):
         return 'BIOGRID-PROJECT-kinome_project_sc-'
 
     def _get_kinome_zip_file_name(self):
-        return self. _get_kinome_prefix() + self._biogrid_version + '.zip'
+        return self._get_kinome_prefix() + self._biogrid_version + '.zip'
 
     def _get_interactions_file_name(self):
         return os.path.join(self._datadir, \
@@ -264,16 +265,11 @@ class NDExNdexkinomeloaderLoader(object):
         return os.path.join(self._datadir, \
                             self._get_kinome_prefix() + 'PTM-RELATIONSHIPS-' + self._biogrid_version + '.ptmrel.txt')
 
-
     def _get_kinome_download_url(self):
         return 'https://downloads.thebiogrid.org/Download/BioGRID/Release-Archive/BIOGRID-' + \
             self._biogrid_version + '/' + self._get_kinome_zip_file_name()
 
-
     def _download_file(self, url):
-
-        #if not os.path.exists(self._datadir):
-        #    os.makedirs(self._datadir)
         try:
             print(url)
             response = requests.get(url)
@@ -291,12 +287,10 @@ class NDExNdexkinomeloaderLoader(object):
 
         return SUCCESS
 
-
     def _download_kinome_files(self):
         url = self._get_kinome_download_url()
         download_status = self._download_file(url)
         return download_status
-
 
     def _check_if_data_dir_exists(self):
         data_dir_existed = True
@@ -307,7 +301,6 @@ class NDExNdexkinomeloaderLoader(object):
 
         return data_dir_existed
 
-
     def _unzip_kinome(self):
         try:
             with zipfile.ZipFile(self._kinome_zip, "r") as zip_ref:
@@ -317,7 +310,6 @@ class NDExNdexkinomeloaderLoader(object):
             return ERROR
 
         return SUCCESS
-
 
     def _build_gene_lookup(self):
 
@@ -339,7 +331,6 @@ class NDExNdexkinomeloaderLoader(object):
 
         return SUCCESS
 
-
     def _build_gene_tsv(self, entrez_gene_A_data, entrez_gene_B_data):
         ret_array = []
 
@@ -359,7 +350,6 @@ class NDExNdexkinomeloaderLoader(object):
         ret_str = '\t'.join(str(element)  if element != '-' else '' for element in ret_array)
         return ret_str
 
-
     def _create_ppi_file(self):
         interactions_header = \
             ['#BioGRID Interaction ID', 'Entrez Gene Interactor A', 'Entrez Gene Interactor B',
@@ -370,15 +360,13 @@ class NDExNdexkinomeloaderLoader(object):
              'Modification', 'Phenotypes', 'Qualifications', 'Tags', 'Source Database'
              ]
 
-        new_headers =  ['Interaction Count A', 'Interaction Count B',
-                        'PTM Count A', 'PTM Count B',
-                        'Chemical Interaction Count A', 'Chemical Interaction Count B',
-                        'Source A', 'Source B', 'Category Values A', 'Category Values B',
-                        'SubCategory Values A', 'SubCategory Values B']
+        new_headers = ['Interaction Count A', 'Interaction Count B',
+                       'PTM Count A', 'PTM Count B',
+                       'Chemical Interaction Count A', 'Chemical Interaction Count B',
+                       'Source A', 'Source B', 'Category Values A', 'Category Values B',
+                       'SubCategory Values A', 'SubCategory Values B']
 
         interactions_header_1 = interactions_header + new_headers
-
-        #ppi_network = os.path.join(self._datadir, 'ppi_network_1.txt')
 
         default_gene_data = {'INTERACTION COUNT':'',
                              'PTM COUNT':'',
@@ -389,8 +377,6 @@ class NDExNdexkinomeloaderLoader(object):
         try:
             with open(self._interactions, 'r') as tsv:
                 reader = csv.reader(tsv, delimiter='\t')
-
-
                 with open(self._ppi_network_1, 'w') as o_f:
 
                     output_header = '\t'.join(h for h in interactions_header_1) + '\n'
@@ -422,7 +408,6 @@ class NDExNdexkinomeloaderLoader(object):
             return ERROR
 
         return SUCCESS
-
 
     def _create_ptm_file(self):
         ptm_header = \
@@ -469,7 +454,6 @@ class NDExNdexkinomeloaderLoader(object):
 
         return SUCCESS
 
-
     def _init_network_attributes(self, network, type='pti'):
         if type == 'pti':
             network.set_name('PTI - Step 1')
@@ -480,14 +464,17 @@ class NDExNdexkinomeloaderLoader(object):
 
         network.set_network_attribute('prov:wasDerivedFrom', self._get_kinome_download_url())
         network.set_network_attribute('prov:wasGeneratedBy',
-                '<a href="https://github.com/vrynkov/ndexkinomeloader" target="_blank">ndexkinomeloader ' \
-                + str(ndexkinomeloader.__version__) + '</a>')
+                                      '<a href="https://github.com/'
+                                      'ndexcontent/ndexkinomeloader" '
+                                      'target="_blank">ndexkinomeloader ' +
+                                      str(ndexkinomeloader.__version__) +
+                                      '</a>')
 
-        network.set_network_attribute('__iconurl', 'https://home.ndexbio.org/img/biogrid_logo.jpg')
+        network.set_network_attribute('__iconurl',
+                                      'https://home.ndexbio.org/img/'
+                                      'biogrid_logo.jpg')
 
         network.apply_style_from_network(self._template)
-
-
 
     def _generate_CX_file(self, load_plan, network_tsv):
 
@@ -504,16 +491,11 @@ class NDExNdexkinomeloaderLoader(object):
 
         return network, SUCCESS
 
-
     def _write_nice_cx_to_file(self, network_in_cx, cx_file_path):
-
         with open(cx_file_path, 'w') as f:
             json.dump(network_in_cx.to_cx(), f, indent=4)
 
-
-
     def _upload_CX(self, path_to_network_in_CX, network_UUID):
-
         with open(path_to_network_in_CX, 'br') as network_out:
             try:
                 if network_UUID is None:
@@ -527,9 +509,7 @@ class NDExNdexkinomeloaderLoader(object):
 
         return SUCCESS
 
-
     def _merge_attributes(self, attribute_list_1, attribute_list_2):
-
         for attribute1 in attribute_list_1:
 
             name1 = attribute1['n']
@@ -542,10 +522,6 @@ class NDExNdexkinomeloaderLoader(object):
 
             if not found:
                 continue
-
-            #if attribute1['v'] == attribute2['v']:
-                # attribute with the same name and value; do not add
-            #    continue
 
             if not 'd' in attribute1:
                 attribute1['d'] = 'list_of_string'
@@ -594,9 +570,7 @@ class NDExNdexkinomeloaderLoader(object):
 
 
     def _collapse_edges(self, network_in_cx):
-
         unique_edges = {}
-
         # in the loop below, we build a map where key is a tuple (edge_source, interacts, edge_target)
         # and the value is a list of edge ids
         for edge_id, edge in network_in_cx.edges.items():
@@ -662,9 +636,11 @@ class NDExNdexkinomeloaderLoader(object):
         del network_in_cx.edgeAttributes
         network_in_cx.edgeAttributes = collapsed_edgeAttributes
 
-
     def _get_network_summaries_from_NDEx_server(self):
+        """
 
+        :return:
+        """
         try:
             network_summaries = self._ndex.get_network_summaries_for_user(self._user)
         except Exception as e:
@@ -675,7 +651,12 @@ class NDExNdexkinomeloaderLoader(object):
 
 
     def _get_network_uuid(self, network_name, network_summaries):
+        """
 
+        :param network_name:
+        :param network_summaries:
+        :return:
+        """
         for summary in network_summaries:
             network_name_1 = summary.get('name')
 
@@ -687,7 +668,12 @@ class NDExNdexkinomeloaderLoader(object):
 
 
     def _network_exists_on_server(self, ptm_CX_network, summaries):
+        """
 
+        :param ptm_CX_network:
+        :param summaries:
+        :return:
+        """
         network_name = ptm_CX_network.get_name()
 
         for summary in summaries:
@@ -701,7 +687,11 @@ class NDExNdexkinomeloaderLoader(object):
 
 
     def _rename_ptm_network_nodes(self, ptm_network_in_cx):
+        """
 
+        :param ptm_network_in_cx:
+        :return:
+        """
         pattern = re.compile("^([A-Za-z]+[0-9]*)-([A-Z]+)-([0-9]+|[A-Za-z]+)$")
 
         for index, node in ptm_network_in_cx.nodes.items():
@@ -713,8 +703,12 @@ class NDExNdexkinomeloaderLoader(object):
                     else:
                         node['n'] = broken_name[1] + broken_name[2]
 
-
     def _get_ptm_ids_for_edge(self, edge_attributes):
+        """
+
+        :param edge_attributes:
+        :return:
+        """
         for edge_attribute in edge_attributes:
             if edge_attribute['n'] and edge_attribute['n'].strip().lower() == 'biogrid ptm id':
                 if edge_attribute['v']:
@@ -724,12 +718,23 @@ class NDExNdexkinomeloaderLoader(object):
 
 
     def _add_ptm_ids_to_target_node(self, biogrid_ptm_ids, node_attributes):
+        """
+
+        :param biogrid_ptm_ids:
+        :param node_attributes:
+        :return:
+        """
         for node_attribute in node_attributes:
             if node_attribute['n'] and node_attribute['n'].strip().lower() == 'biogrid ptm id':
                 node_attribute['v'] = biogrid_ptm_ids
                 break
 
     def _add_BioGRID_PTM_IDs_to_ptm_nodes(self, ptm_network_in_cx):
+        """
+
+        :param ptm_network_in_cx:
+        :return:
+        """
         for index, edge in ptm_network_in_cx.edges.items():
             edge_attributes = ptm_network_in_cx.edgeAttributes[edge['@id']]
             biogrid_ptm_ids = self._get_ptm_ids_for_edge(edge_attributes)
@@ -741,6 +746,11 @@ class NDExNdexkinomeloaderLoader(object):
 
 
     def _build_pti_node_name_to_node_id_dictionary(self, pti_CX_network):
+        """
+
+        :param pti_CX_network:
+        :return:
+        """
         pti_nodes = {}
         for node in pti_CX_network.get_nodes():
             node_obj = node[1]
@@ -754,10 +764,12 @@ class NDExNdexkinomeloaderLoader(object):
 
         return pti_nodes
 
-
-
-
     def _build_ptm_node_name_to_node_id_dictionary(self, ptm_CX_network):
+        """
+
+        :param ptm_CX_network:
+        :return:
+        """
         ptm_nodes = {}
         for node in ptm_CX_network.get_nodes():
             node_obj = node[1]
@@ -778,6 +790,12 @@ class NDExNdexkinomeloaderLoader(object):
 
 
     def _get_all_edges_for_node(self, node_id, cx_network):
+        """
+
+        :param node_id:
+        :param cx_network:
+        :return:
+        """
         edges = []
 
         for edge in cx_network.get_edges():
@@ -786,13 +804,18 @@ class NDExNdexkinomeloaderLoader(object):
 
         return edges
 
-
-
-
-
-
     def _merge_ptm_onto_pti(self, pti_node_name_dict, ptm_node_name_dict, pti_CX_network,
                             ptm_CX_network, protein_id_to_ptm_ids_dict, src_target_edge_ptm_ids_dict):
+        """
+
+        :param pti_node_name_dict:
+        :param ptm_node_name_dict:
+        :param pti_CX_network:
+        :param ptm_CX_network:
+        :param protein_id_to_ptm_ids_dict:
+        :param src_target_edge_ptm_ids_dict:
+        :return:
+        """
 
         pti_CX_network.node_int_id_generator = max(pti_CX_network.nodes.keys()) + 1
         pti_CX_network.edge_int_id_generator = max(pti_CX_network.edges.keys()) + 1
@@ -841,13 +864,16 @@ class NDExNdexkinomeloaderLoader(object):
 
         return pti_CX_network
 
-
     def _build_protein_id_to_ptm_ids_dict(self, protein_name_dict, ptm_CX_network):
+        """
 
+        :param protein_name_dict:
+        :param ptm_CX_network:
+        :return:
+        """
         protein_id_to_ptm_ids_dict = {}
 
         inv_protein_name_dict = {v: k for k, v in protein_name_dict.items()}
-
 
         for edge in ptm_CX_network.get_edges():
             edge_source_id = edge[1]['s']
@@ -867,8 +893,12 @@ class NDExNdexkinomeloaderLoader(object):
 
         return protein_id_to_ptm_ids_dict
 
-
     def _build_src_target_edge_ptm_ids_dict(self, ptm_CX_network):
+        """
+
+        :param ptm_CX_network:
+        :return:
+        """
         src_target_edge_ptm_ids_dict = {}
 
         for edge_tuple in ptm_CX_network.get_edges():
@@ -881,7 +911,6 @@ class NDExNdexkinomeloaderLoader(object):
                 src_target_edge_ptm_ids_dict[key] = edge_id
 
         return src_target_edge_ptm_ids_dict
-
 
     def run(self):
         """
@@ -905,14 +934,11 @@ class NDExNdexkinomeloaderLoader(object):
 
         self._build_gene_lookup()
 
-
         self._create_ndex_connection()
-
 
         summaries, ret_value = self._get_network_summaries_from_NDEx_server()
         if ret_value != SUCCESS:
             return ret_value
-
 
         # Step 1 - create PPI file from GENES and INTERACTIONS files
         self._create_ppi_file()
@@ -926,7 +952,6 @@ class NDExNdexkinomeloaderLoader(object):
         self._write_nice_cx_to_file(pti_CX_network, self._cx_pti)
         network_UUID = self._network_exists_on_server(pti_CX_network, summaries)
         self._upload_CX(self._cx_pti, network_UUID)
-
 
         # Step 2 - create PTM network file
         self._create_ptm_file()
@@ -943,7 +968,6 @@ class NDExNdexkinomeloaderLoader(object):
         network_UUID = self._network_exists_on_server(ptm_CX_network, summaries)
         self._upload_CX(self._cx_ptm, network_UUID)
 
-
         # Step 3 - merge PTM network with PTI network on protein/genes:
         # in essence, we add edges from PTM network to PTI based on node names
         pti_CX_network = ndex2.create_nice_cx_from_file(self._cx_pti)
@@ -959,7 +983,6 @@ class NDExNdexkinomeloaderLoader(object):
 
         #print(f'protein nodes in pti={len(pti_node_name_dict)}   protein nodes in ptm={len(ptm_node_name_dict)}')
 
-
         # in this dictionary for ptm network, key is protein node id, value is list of ptm ids:
         #   pti_node_name_dict: {0: [1, 3108, 3521, 3522, 3523], 2: [3, 4, 5, 6, 7, 8, 9], 40: [41, 42, 43, 44, 45], ...}
         protein_id_to_ptm_ids_dict = self._build_protein_id_to_ptm_ids_dict(ptm_node_name_dict, ptm_CX_network)
@@ -968,7 +991,6 @@ class NDExNdexkinomeloaderLoader(object):
         # value is edge id
         src_target_edge_ptm_ids_dict = self._build_src_target_edge_ptm_ids_dict(ptm_CX_network)
 
-
         merged_ptm_pti_network = self._merge_ptm_onto_pti(pti_node_name_dict, ptm_node_name_dict,
                   pti_CX_network, ptm_CX_network, protein_id_to_ptm_ids_dict, src_target_edge_ptm_ids_dict)
 
@@ -976,7 +998,6 @@ class NDExNdexkinomeloaderLoader(object):
         self._write_nice_cx_to_file(merged_ptm_pti_network, self._cx_merged)
         network_UUID = self._network_exists_on_server(merged_ptm_pti_network, summaries)
         self._upload_CX(self._cx_merged, network_UUID)
-
 
         return SUCCESS
 
@@ -990,7 +1011,7 @@ def main(args):
     desc = """
     Version {version}
 
-    Loads NDEx KINOME Content Loader data into NDEx (http://ndexbio.org).
+    Loads NDEx KINOME Content Loader data into NDEx (https://ndexbio.org).
     
     To connect to NDEx server a configuration file must be passed
     into --conf parameter. If --conf is unset the configuration 
